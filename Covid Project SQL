@@ -1,0 +1,109 @@
+/*
+Covid 19 Data Exploration 
+
+Skills used: CTE's, Aggregate Functions, Converting Data Types
+
+Creators: Jordan Campbell, Alex Freberg
+*/
+
+-- Select data we will be using
+
+SELECT location, date, total_cases, new_cases, total_deaths, population
+FROM `utility-binder-333917.covid_dataset.covid_deaths`
+ORDER BY location, date
+LIMIT 1000
+
+-- Looking at Total Cases vs Total Deaths in the United States
+-- Shows likelihood of death if you contract covid
+
+SELECT location, date, total_cases, total_deaths, (total_deaths/total_cases)*100 AS death_percentage
+FROM `utility-binder-333917.covid_dataset.covid_deaths`
+WHERE location = 'United States'
+ORDER BY location, date
+LIMIT 10000
+
+-- Looking at Total Cases vs Population
+-- Shows what percentage of population got covid (United States)
+
+SELECT location, date, population, total_cases, (total_cases/population)*100 AS percentage_of_cases
+FROM `utility-binder-333917.covid_dataset.covid_deaths`
+WHERE location = 'United States'
+ORDER BY location, date
+LIMIT 1000
+
+-- Looking at Highest Infection Rate compared to Population (all countries)
+
+SELECT location, population, date, MAX(total_cases) AS highest_infection_count, MAX((total_cases/population))*100 AS percent_population_infected
+FROM `utility-binder-333917.covid_dataset.covid_deaths`
+GROUP BY location, population, date
+ORDER BY percent_population_infected desc
+LIMIT 10000
+
+-- Looking at Total Death Count (all countries)
+-- Change total_deaths to type integer 
+-- Filter for countries only
+
+SELECT location, MAX(cast(total_deaths as int)) AS total_death_count
+FROM `utility-binder-333917.covid_dataset.covid_deaths`
+WHERE continent is not null 
+GROUP BY location
+ORDER BY total_death_count desc
+LIMIT 1000
+
+-- Breaking down things by continent
+-- Continents' total death count
+-- Filter to show only the continents
+-- 'European Union' is part of Europe
+
+SELECT location, MAX(cast(total_deaths as int)) AS total_death_count
+FROM `utility-binder-333917.covid_dataset.covid_deaths`
+WHERE continent is null AND location not in ('World', 'High income', 'Upper middle income', 'Lower middle income', 'European Union', 'Low income', 'International')
+GROUP BY location
+ORDER BY total_death_count desc
+LIMIT 1000
+
+-- GLOBAL NUMBERS
+
+-- Numbers by date
+SELECT date, SUM(new_cases) As total_cases, SUM(cast(new_deaths as int)) as total_deaths, SUM(cast(new_deaths as int))/SUM(new_cases)*100 as death_percentage
+FROM `utility-binder-333917.covid_dataset.covid_deaths`
+WHERE continent is not null 
+GROUP BY date
+ORDER BY date
+LIMIT 1000
+
+-- Total number of cases and deaths
+SELECT SUM(new_cases) As total_cases, SUM(cast(new_deaths as int)) as total_deaths, SUM(cast(new_deaths as int))/SUM(new_cases)*100 as death_percentage
+FROM `utility-binder-333917.covid_dataset.covid_deaths`
+WHERE continent is not null 
+LIMIT 1000
+
+-- Looking at Total Population vs Vaccinations
+
+SELECT location, continent, date, population, new_vaccinations
+FROM `utility-binder-333917.covid_dataset.covid_deaths`
+WHERE continent is not null 
+ORDER BY location, date
+LIMIT 1000
+
+-- Total number of vaccinations
+
+SELECT location, continent, date, population, new_vaccinations, SUM(cast(new_vaccinations as int)) OVER (partition by location order by location, date) AS rolling_people_vaccinated
+FROM `utility-binder-333917.covid_dataset.covid_deaths`
+WHERE continent is not null 
+ORDER BY location, date
+LIMIT 1000
+
+-- Creating a CTE
+
+WITH PopvsVac 
+AS (
+SELECT location, continent, date, population, new_vaccinations, SUM(cast(new_vaccinations as int)) OVER (partition by location order by location, date) AS rolling_people_vaccinated
+FROM `utility-binder-333917.covid_dataset.covid_deaths`
+WHERE continent is not null 
+ORDER BY location, date
+LIMIT 1000
+)
+SELECT *, (rolling_people_vaccinated/Population)*100 AS percent_population_vaccinated
+FROM PopvsVac
+

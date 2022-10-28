@@ -1,0 +1,113 @@
+/*
+  Cleaning data with SQL
+
+  Skills: Casting, splitting columns, adding and deleting rows and columns, removing duplicates, changing values
+*/
+
+-- Casting SaleDate as type Date
+
+SELECT SaleDate, CAST(SaleDate as Date)
+FROM `utility-binder-333917.housing_data.nashville_housing`
+LIMIT 10000
+
+-- Populate Property Address data
+
+SELECT PropertyAddress
+FROM `utility-binder-333917.housing_data.nashville_housing`
+WHERE PropertyAddress is null
+LIMIT 10000
+
+SELECT a.ParcelID, a.PropertyAddress, b.ParcelID, b.PropertyAddress, IFNULL(a.PropertyAddress, b.PropertyAddress)
+FROM `utility-binder-333917.housing_data.nashville_housing` as a
+JOIN `utility-binder-333917.housing_data.nashville_housing` as b
+ON a.ParcelID = b.ParcelID
+AND a.UniqueID_ <> b.UniqueID_
+WHERE a.PropertyAddress is null
+
+-- Breaking out Address into individual columns (address, city, state)
+
+-- Property Address
+
+SELECT (split(PropertyAddress, ','))[safe_ordinal(1)] as Address, (split(PropertyAddress, ','))[safe_ordinal(2)] as City
+FROM `utility-binder-333917.housing_data.nashville_housing`
+LIMIT 10000
+
+ALTER TABLE `utility-binder-333917.housing_data.nashville_housing`
+ADD column Address string
+
+UPDATE `utility-binder-333917.housing_data.nashville_housing`
+SET Address = split(PropertyAddress, ',')[safe_ordinal(1)]
+WHERE Address is null
+
+ALTER TABLE `utility-binder-333917.housing_data.nashville_housing`
+ADD column City string
+
+UPDATE `utility-binder-333917.housing_data.nashville_housing`
+SET City = split(PropertyAddress, ',')[safe_ordinal(2)]
+WHERE City is null
+
+SELECT *
+FROM `utility-binder-333917.housing_data.nashville_housing`
+LIMIT 10000
+
+-- Owner Address
+
+SELECT (split(OwnerAddress, ','))[safe_ordinal(1)] as Address, (split(OwnerAddress, ','))[safe_ordinal(2)] as City, (split(OwnerAddress, ','))[safe_ordinal(3)] as State
+FROM `utility-binder-333917.housing_data.nashville_housing`
+LIMIT 10000
+
+ALTER TABLE `utility-binder-333917.housing_data.nashville_housing`
+ADD column OwnerStreetAddress string
+
+UPDATE `utility-binder-333917.housing_data.nashville_housing`
+SET OwnerStreetAddress = split(OwnerAddress, ',')[safe_ordinal(1)]
+WHERE OwnerStreetAddress is null
+
+ALTER TABLE `utility-binder-333917.housing_data.nashville_housing`
+ADD column OwnerCity string
+
+UPDATE `utility-binder-333917.housing_data.nashville_housing`
+SET OwnerCity = split(OwnerAddress, ',')[safe_ordinal(2)]
+WHERE OwnerCity is null
+
+ALTER TABLE `utility-binder-333917.housing_data.nashville_housing`
+ADD column OwnerState string
+
+UPDATE `utility-binder-333917.housing_data.nashville_housing`
+SET OwnerState = split(OwnerAddress, ',')[safe_ordinal(3)]
+WHERE OwnerState is null
+
+SELECT *
+FROM `utility-binder-333917.housing_data.nashville_housing`
+LIMIT 10000
+
+-- Change 'Y' or 'N' to 'true' or 'false' in SoldAsVacant field
+
+UPDATE `utility-binder-333917.housing_data.nashville_housing`
+SET SoldAsVacant = CASE WHEN SoldAsVacant = 'Y' THEN 'true'
+WHEN SoldAsVacant = 'N' THEN 'false'
+END
+WHERE SoldAsVacant is not null
+
+-- Remove Duplicates (DO NOT DELETE DATA IN ACTUAL PROJECTS. DUPLICATE DATA FIRST.)
+
+WITH RowNumCTE AS(
+SELECT *,
+ROW_NUMBER() OVER (
+  PARTITION BY ParcelID,
+               PropertyAddress,
+               SalePrice,
+               SaleDate,
+               LegalReference       
+  ) as rown
+FROM `utility-binder-333917.housing_data.nashville_housing`
+WHERE rown > 1
+)
+SELECT *
+FROM `utility-binder-333917.housing_data.nashville_housing`
+
+-- Delete Unnecessary Columns
+
+ALTER TABLE `utility-binder-333917.housing_data.nashville_housing`
+Drop column TaxDistrict
+
